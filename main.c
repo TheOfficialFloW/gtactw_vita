@@ -257,8 +257,8 @@ void glLinkProgramHook(GLuint program) {
 }
 
 void glUseProgramHook(GLuint program) {
-	glUseProgram(program);
-	cur_prog = program;
+  glUseProgram(program);
+  cur_prog = program;
 }
 
 void OS_ThreadWait(void *thread) {
