@@ -211,6 +211,56 @@ void *OS_ThreadLaunch(int (* func)(), void *arg, int r2, char *name, int r4, int
   return NULL;
 }
 
+GLfloat is_fixed;
+GLint is_fixed_unif_0;
+GLint is_fixed_unif_4;
+
+void glVertexAttribPointerHook(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer) {
+  if (index == 0) {
+    if (type == GL_FIXED) {
+      is_fixed = 1.0f;
+      type = GL_FLOAT;
+    } else {
+      is_fixed = 0.0f;
+    }
+  }
+  glVertexAttribPointer(index, size, type, normalized, stride, pointer);
+}
+
+GLuint cur_prog;
+void glDrawArraysHook(GLenum mode, GLint first, GLsizei count) {
+  switch (cur_prog) {
+  case 0:
+    glUniform1f(is_fixed_unif_0, is_fixed);
+    break;
+  case 4:
+    glUniform1f(is_fixed_unif_4, is_fixed);
+    break;
+  default:
+    break;
+  }
+  glDrawArrays(mode, first, count);
+}
+
+void glLinkProgramHook(GLuint program) {
+  glLinkProgram(program);
+  switch (program) {
+  case 0:
+    is_fixed_unif_0 = glGetUniformLocation(program, "is_fixed");
+    break;
+  case 4:
+    is_fixed_unif_4 = glGetUniformLocation(program, "is_fixed");
+    break;
+  default:
+    break;
+  }
+}
+
+void glUseProgramHook(GLuint program) {
+	glUseProgram(program);
+	cur_prog = program;
+}
+
 void OS_ThreadWait(void *thread) {
   if (thread)
     sceKernelWaitThreadEnd(*(int *)(thread + 0x24), NULL, NULL);
@@ -426,7 +476,7 @@ static DynLibFunction dynlib_functions[] = {
   { "glDepthMask", (uintptr_t)&glDepthMask },
   { "glDisable", (uintptr_t)&glDisable },
   { "glDisableVertexAttribArray", (uintptr_t)&glDisableVertexAttribArray },
-  { "glDrawArrays", (uintptr_t)&glDrawArrays},
+  { "glDrawArrays", (uintptr_t)&glDrawArraysHook},
   { "glEnable", (uintptr_t)&glEnable },
   { "glEnableVertexAttribArray", (uintptr_t)&glEnableVertexAttribArray },
   { "glFramebufferRenderbuffer", (uintptr_t)&ret0 },
@@ -443,7 +493,7 @@ static DynLibFunction dynlib_functions[] = {
   { "glGetString", (uintptr_t)&glGetString },
   { "glGetUniformLocation", (uintptr_t)&glGetUniformLocation },
   { "glLineWidth", (uintptr_t)&glLineWidth },
-  { "glLinkProgram", (uintptr_t)&glLinkProgram },
+  { "glLinkProgram", (uintptr_t)&glLinkProgramHook },
   { "glRenderbufferStorage", (uintptr_t)&ret0 },
   { "glScissor", (uintptr_t)&glScissor },
   { "glShaderSource", (uintptr_t)&glShaderSource },
@@ -455,11 +505,11 @@ static DynLibFunction dynlib_functions[] = {
   { "glUniform4f", (uintptr_t)&glUniform4f },
   { "glUniformMatrix3fv", (uintptr_t)&glUniformMatrix3fv },
   { "glUniformMatrix4fv", (uintptr_t)&glUniformMatrix4fv },
-  { "glUseProgram", (uintptr_t)&glUseProgram },
+  { "glUseProgram", (uintptr_t)&glUseProgramHook },
   { "glVertexAttrib2f", (uintptr_t)&glVertexAttrib2f },
   { "glVertexAttrib3f", (uintptr_t)&glVertexAttrib3f },
   { "glVertexAttrib4f", (uintptr_t)&glVertexAttrib4f },
-  { "glVertexAttribPointer", (uintptr_t)&glVertexAttribPointer },
+  { "glVertexAttribPointer", (uintptr_t)&glVertexAttribPointerHook },
   { "glViewport", (uintptr_t)&glViewport },
 
   { "longjmp", (uintptr_t)&longjmp },
