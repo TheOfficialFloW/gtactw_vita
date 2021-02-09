@@ -135,7 +135,7 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
       CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.g > 1.0f ) vecTotalLighting.g = 1.0f;");
       CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.b > 1.0f ) vecTotalLighting.b = 1.0f;");
       CShaderProgram__AddVertexShaderString(this, "Out_Color = vecTotalLighting;");
-    }else {
+    } else {
       CShaderProgram__AddVertexShaderString(this, "Out_Color = vColor;");
     }
     if (flags & FLAG_TEXTURE)
