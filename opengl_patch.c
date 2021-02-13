@@ -24,6 +24,8 @@ int (* CShaderProgram__AddVertexShaderString)(void *this, char *string);
 #define FLAG_NORMALS     0x08
 #define FLAG_EXTRA_LIGHT 0x10
 #define FLAG_ALPHA_TEST  0x20
+#define FLAG_DEBUG1      0x40
+#define FLAG_DEBUG2      0x80
 
 uint8_t CompilerRefCount = 0;
 
@@ -41,25 +43,32 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
   if (CompilerRefCount == 9) { // Program 5 - Vertex (This shader is used always with GL_FIXED position attr)
     is_fixed = 2;
   }
-  
+
   char **shaderSource;
 
   // FRAGMENT SHADER
   if (shaderType != GL_VERTEX_SHADER) {
-    CShaderProgram__AddFragmentShaderString(this, "float4 main(");
+    CShaderProgram__AddFragmentShaderString(this, "fixed4 main(");
     if (flags & FLAG_TEXTURE) {
       CShaderProgram__AddFragmentShaderString(this, "uniform sampler2D SamplerDiffuse,");
-      CShaderProgram__AddFragmentShaderString(this, "float2 Out_UV : TEXCOORD0,");
-      CShaderProgram__AddFragmentShaderString(this, "float4 Out_Color : COLOR0");
+      CShaderProgram__AddFragmentShaderString(this, "half2 Out_UV : TEXCOORD0,");
+      CShaderProgram__AddFragmentShaderString(this, "fixed4 Out_Color : COLOR0");
       CShaderProgram__AddFragmentShaderString(this, "){");
-      CShaderProgram__AddFragmentShaderString(this, "float4 gl_FragColor = tex2D ( SamplerDiffuse, Out_UV ) * Out_Color;");
+      CShaderProgram__AddFragmentShaderString(this, "fixed4 gl_FragColor = tex2D ( SamplerDiffuse, Out_UV ) * Out_Color;");
     } else {
-      CShaderProgram__AddFragmentShaderString(this, "float4 Out_Color : COLOR0");
+      CShaderProgram__AddFragmentShaderString(this, "fixed4 Out_Color : COLOR0");
       CShaderProgram__AddFragmentShaderString(this, "){");
-      CShaderProgram__AddFragmentShaderString(this, "float4 gl_FragColor = Out_Color;");
+      CShaderProgram__AddFragmentShaderString(this, "fixed4 gl_FragColor = Out_Color;");
     }
-    if (flags & FLAG_ALPHA_TEST) {
-      CShaderProgram__AddFragmentShaderString(this, "if ( gl_FragColor.a < 0.03125f ){ discard; }");
+    if (flags & FLAG_ALPHA_TEST)
+      CShaderProgram__AddFragmentShaderString(this, "if ( gl_FragColor.a < 0.03125 ){ discard; }");
+    if (flags & FLAG_DEBUG1) {
+      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.r = 1.0;");
+      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
+    }
+    if (flags & FLAG_DEBUG2) {
+      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.b = 1.0;");
+      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
     }
     CShaderProgram__AddFragmentShaderString(this, "return gl_FragColor;");
     CShaderProgram__AddFragmentShaderString(this, "}");
@@ -93,53 +102,53 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
       }
     }
     if (flags & FLAG_TEXTURE)
-      CShaderProgram__AddVertexShaderString(this, "float2 out Out_UV : TEXCOORD0,");
-    CShaderProgram__AddVertexShaderString(this, "float4 out Out_Color : COLOR0,");
+      CShaderProgram__AddVertexShaderString(this, "half2 out Out_UV : TEXCOORD0,");
+    CShaderProgram__AddVertexShaderString(this, "fixed4 out Out_Color : COLOR0,");
     CShaderProgram__AddVertexShaderString(this, "float4 out gl_Position : POSITION");
     CShaderProgram__AddVertexShaderString(this, "){");
     if (is_fixed == 1)
-      CShaderProgram__AddVertexShaderString(this, "if (is_fixed > 0.0f)");
+      CShaderProgram__AddVertexShaderString(this, "if (is_fixed > 0.0)");
     if (is_fixed)
-      CShaderProgram__AddVertexShaderString(this, "vPos = floatToIntBits(vPos) / 65536.0f;");
+      CShaderProgram__AddVertexShaderString(this, "vPos = floatToIntBits(vPos) / 65536.0;");
     if (flags & FLAG_3D) {
-      CShaderProgram__AddVertexShaderString(this, "float4 vecPos = float4 ( vPos, 1.0f );");
+      CShaderProgram__AddVertexShaderString(this, "float4 vecPos = float4 ( vPos, 1.0 );");
       CShaderProgram__AddVertexShaderString(this, "gl_Position = mul ( mul ( vecPos, matModelView ), matProj );");
     } else if (flags & FLAG_2D) {
-      CShaderProgram__AddVertexShaderString(this, "float4 vecPos = float4 ( vPos.xy, 0.0f, 1.0f );");
+      CShaderProgram__AddVertexShaderString(this, "float4 vecPos = float4 ( vPos.xy, 0.0, 1.0 );");
       CShaderProgram__AddVertexShaderString(this, "gl_Position = mul ( mul ( vecPos, matModelView ), matProj );");
     }
     if (flags & FLAG_NORMALS) {
       CShaderProgram__AddVertexShaderString(this, "float3 vNormalized = normalize ( vNormal );");
       CShaderProgram__AddVertexShaderString(this, "float3 vecTransformedNormal = mul ( vNormalized, matLastWorld33 );");
       CShaderProgram__AddVertexShaderString(this, "float fIntensity = dot ( vecTransformedNormal, vecMainLightDirection );");
-      CShaderProgram__AddVertexShaderString(this, "if ( fIntensity < 0.0f ) fIntensity = 0.0f;");
-      CShaderProgram__AddVertexShaderString(this, "float4 vecIntensity = float4 ( fIntensity, fIntensity, fIntensity, 1.0f );");
-      CShaderProgram__AddVertexShaderString(this, "float4 vecAmbient = 0.4f * float4 ( vecMainLightColorAmbient.rgb, 0.0f ) * float4 ( vecMaterialAmbient.rgb, 0.0f );");
-      CShaderProgram__AddVertexShaderString(this, "float4 vecLighting = float4 ( vecMainLightColorDiffuse.rgb, 1.0f ) * vecMaterialDiffuse * vecIntensity + vecAmbient;");
+      CShaderProgram__AddVertexShaderString(this, "if ( fIntensity < 0.0 ) fIntensity = 0.0;");
+      CShaderProgram__AddVertexShaderString(this, "float4 vecIntensity = float4 ( fIntensity, fIntensity, fIntensity, 1.0 );");
+      CShaderProgram__AddVertexShaderString(this, "float4 vecAmbient = 0.4 * float4 ( vecMainLightColorAmbient.rgb, 0.0 ) * float4 ( vecMaterialAmbient.rgb, 0.0 );");
+      CShaderProgram__AddVertexShaderString(this, "float4 vecLighting = float4 ( vecMainLightColorDiffuse.rgb, 1.0 ) * vecMaterialDiffuse * vecIntensity + vecAmbient;");
       CShaderProgram__AddVertexShaderString(this, "float4 vecTotalLighting = vecLighting;");
       if (flags & FLAG_EXTRA_LIGHT) {
         CShaderProgram__AddVertexShaderString(this, "float3 vecTransformedViewNormal = mul ( vNormalized, matView33 );");
-        CShaderProgram__AddVertexShaderString(this, "float4 vecView = mul ( float4 ( vPos, 1.0f ), matModelView );");
+        CShaderProgram__AddVertexShaderString(this, "float4 vecView = mul ( float4 ( vPos, 1.0 ), matModelView );");
         CShaderProgram__AddVertexShaderString(this, "float3 vecViewToLight = float3 ( vecView.x - vecExtraLightPosition.x, vecView.y - vecExtraLightPosition.y, vecView.z - vecExtraLightPosition.z );");
         CShaderProgram__AddVertexShaderString(this, "float fDistance = length ( vecViewToLight );");
-        CShaderProgram__AddVertexShaderString(this, "fIntensity = 1.0f - fDistance * fDistance * 0.002125f;");
-        CShaderProgram__AddVertexShaderString(this, "if ( fIntensity < 0.0f ) fIntensity = 0.0f;");
+        CShaderProgram__AddVertexShaderString(this, "fIntensity = 1.0 - fDistance * fDistance * 0.002125;");
+        CShaderProgram__AddVertexShaderString(this, "if ( fIntensity < 0.0 ) fIntensity = 0.0;");
         CShaderProgram__AddVertexShaderString(this, "float3 vecVertexToLight = float3 ( vecView.x - vecExtraLightPosition.x, vecView.y - vecExtraLightPosition.y, vecView.z - vecExtraLightPosition.z );");
         CShaderProgram__AddVertexShaderString(this, "float3 vecVertexToLightNormalized = normalize ( vecVertexToLight );");
         CShaderProgram__AddVertexShaderString(this, "float fDotIntensity = dot ( vecTransformedViewNormal, -vecVertexToLightNormalized );");
-        CShaderProgram__AddVertexShaderString(this, "if ( fDotIntensity < 0.0f ) fDotIntensity = 0.0f;");
+        CShaderProgram__AddVertexShaderString(this, "if ( fDotIntensity < 0.0 ) fDotIntensity = 0.0;");
         CShaderProgram__AddVertexShaderString(this, "fIntensity *= fDotIntensity;");
-        CShaderProgram__AddVertexShaderString(this, "vecTotalLighting += float4 ( fIntensity * vecExtraLightColorDiffuse.r, fIntensity * vecExtraLightColorDiffuse.g, fIntensity * vecExtraLightColorDiffuse.b, 0.0f );");
+        CShaderProgram__AddVertexShaderString(this, "vecTotalLighting += float4 ( fIntensity * vecExtraLightColorDiffuse.r, fIntensity * vecExtraLightColorDiffuse.g, fIntensity * vecExtraLightColorDiffuse.b, 0.0 );");
       }
-      CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.r > 1.0f ) vecTotalLighting.r = 1.0f;");
-      CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.g > 1.0f ) vecTotalLighting.g = 1.0f;");
-      CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.b > 1.0f ) vecTotalLighting.b = 1.0f;");
+      CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.r > 1.0 ) vecTotalLighting.r = 1.0;");
+      CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.g > 1.0 ) vecTotalLighting.g = 1.0;");
+      CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.b > 1.0 ) vecTotalLighting.b = 1.0;");
       CShaderProgram__AddVertexShaderString(this, "Out_Color = vecTotalLighting;");
     } else {
       CShaderProgram__AddVertexShaderString(this, "Out_Color = vColor;");
     }
     if (flags & FLAG_TEXTURE)
-      CShaderProgram__AddVertexShaderString(this, "Out_UV = float2 ( vUV.x * 0.000488f, vUV.y * 0.000488f );");
+      CShaderProgram__AddVertexShaderString(this, "Out_UV = float2 ( vUV.x * 0.000488, vUV.y * 0.000488 );");
     CShaderProgram__AddVertexShaderString(this, "}");
 
     shader = glCreateShader(GL_VERTEX_SHADER);
