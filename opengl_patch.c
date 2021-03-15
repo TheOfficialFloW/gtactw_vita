@@ -128,17 +128,16 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
       CShaderProgram__AddVertexShaderString(this, "float4 vecTotalLighting = vecLighting;");
       if (flags & FLAG_EXTRA_LIGHT) {
         CShaderProgram__AddVertexShaderString(this, "float3 vecTransformedViewNormal = mul ( vNormalized, matView33 );");
-        CShaderProgram__AddVertexShaderString(this, "float4 vecView = mul ( float4 ( vPos, 1.0 ), matModelView );");
-        CShaderProgram__AddVertexShaderString(this, "float3 vecViewToLight = float3 ( vecView.x - vecExtraLightPosition.x, vecView.y - vecExtraLightPosition.y, vecView.z - vecExtraLightPosition.z );");
+        CShaderProgram__AddVertexShaderString(this, "float3 vecView = mul ( vPos, float3x3 ( matModelView ) );");
+        CShaderProgram__AddVertexShaderString(this, "float3 vecViewToLight = vecView - vecExtraLightPosition;");
+        CShaderProgram__AddVertexShaderString(this, "float3 vecViewToLightNormal = normalize ( vecViewToLight );");
         CShaderProgram__AddVertexShaderString(this, "float fDistance = length ( vecViewToLight );");
         CShaderProgram__AddVertexShaderString(this, "fIntensity = 1.0 - fDistance * fDistance * 0.002125;");
         CShaderProgram__AddVertexShaderString(this, "if ( fIntensity < 0.0 ) fIntensity = 0.0;");
-        CShaderProgram__AddVertexShaderString(this, "float3 vecVertexToLight = float3 ( vecView.x - vecExtraLightPosition.x, vecView.y - vecExtraLightPosition.y, vecView.z - vecExtraLightPosition.z );");
-        CShaderProgram__AddVertexShaderString(this, "float3 vecVertexToLightNormalized = normalize ( vecVertexToLight );");
-        CShaderProgram__AddVertexShaderString(this, "float fDotIntensity = dot ( vecTransformedViewNormal, -vecVertexToLightNormalized );");
+        CShaderProgram__AddVertexShaderString(this, "float fDotIntensity = dot ( vecTransformedViewNormal, -vecViewToLightNormal );");
         CShaderProgram__AddVertexShaderString(this, "if ( fDotIntensity < 0.0 ) fDotIntensity = 0.0;");
         CShaderProgram__AddVertexShaderString(this, "fIntensity *= fDotIntensity;");
-        CShaderProgram__AddVertexShaderString(this, "vecTotalLighting += float4 ( fIntensity * vecExtraLightColorDiffuse.r, fIntensity * vecExtraLightColorDiffuse.g, fIntensity * vecExtraLightColorDiffuse.b, 0.0 );");
+        CShaderProgram__AddVertexShaderString(this, "vecTotalLighting += float4 ( fIntensity * vecExtraLightColorDiffuse.rgb, 0.0 );");
       }
       CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.r > 1.0 ) vecTotalLighting.r = 1.0;");
       CShaderProgram__AddVertexShaderString(this, "if ( vecTotalLighting.g > 1.0 ) vecTotalLighting.g = 1.0;");
@@ -148,7 +147,7 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
       CShaderProgram__AddVertexShaderString(this, "Out_Color = vColor;");
     }
     if (flags & FLAG_TEXTURE)
-      CShaderProgram__AddVertexShaderString(this, "Out_UV = float2 ( vUV.x * 0.000488, vUV.y * 0.000488 );");
+      CShaderProgram__AddVertexShaderString(this, "Out_UV = vUV * 0.000488;");
     CShaderProgram__AddVertexShaderString(this, "}");
 
     shader = glCreateShader(GL_VERTEX_SHADER);
