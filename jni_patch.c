@@ -87,6 +87,7 @@ int GetGamepadType(void) {
   // 8: PS3
   // 9: IOSExtended
   // 10: IOSSimple
+  // return -1 for touch
   return 8;
 }
 

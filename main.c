@@ -120,7 +120,44 @@ int OS_ScreenGetWidth(void) {
   return SCREEN_W;
 }
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define LERP(value, from_max, to_max) ((((value * 10) * (to_max * 10)) / (from_max * 10)) / 10)
+
+#define ACTION_UP   1
+#define ACTION_DOWN 2
+#define ACTION_MOVE 3
+
+int (* AND_TouchEvent)(int action, int report, int x, int y);
+
+int lastX[2] = { 0, 0 };
+int lastY[2] = { 0, 0 };
+int lastTouched[2] = { 0, 0 };
+
 int ProcessEvents(void) {
+  SceTouchData touch;
+  sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1);
+
+  for (int i = 0; i < 2; i++) {
+    if (i < touch.reportNum) {
+      int x = LERP(touch.report[i].x, 1920, SCREEN_W);
+      int y = LERP(touch.report[i].y, 1088, SCREEN_H);
+      if (lastTouched[i] == 0)
+        AND_TouchEvent(ACTION_DOWN, i, x, y);
+      else if (lastX[i] != x || lastY[i] != y)
+        AND_TouchEvent(ACTION_MOVE, i, x, y);
+      lastX[i] = x;
+      lastY[i] = y;
+      lastTouched[i] = 1;
+    } else {
+      if (lastX[i] != 0 || lastY[i] != 0) {
+        AND_TouchEvent(ACTION_UP, i, lastX[i], lastY[i]);
+        lastX[i] = 0;
+        lastY[i] = 0;
+      }
+      lastTouched[i] = 0;
+    }
+  }
+
   return 0; // 1 is exit!
 }
 
@@ -315,7 +352,7 @@ void patch_game(void) {
   // TODO: set deviceChip, definedDevice
   hook_thumb(so_find_addr("_Z20AND_SystemInitializev"), (uintptr_t)ret0);
 
-  // TODO: implement touch here
+  AND_TouchEvent = (void *)so_find_addr("_Z14AND_TouchEventiiii");
   hook_thumb(so_find_addr("_Z13ProcessEventsb"), (uintptr_t)ProcessEvents);
 }
 

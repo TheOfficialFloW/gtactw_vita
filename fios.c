@@ -16,7 +16,7 @@
 #include "so_util.h"
 
 #define MAX_PATH_LENGTH 256
-#define RAMCACHEBLOCKSIZE (1 * 1024 * 1024)
+#define RAMCACHEBLOCKSIZE (128 * 1024)
 #define RAMCACHEBLOCKNUM 64
 
 static int64_t g_OpStorage[SCE_FIOS_OP_STORAGE_SIZE(64, MAX_PATH_LENGTH) / sizeof(int64_t) + 1];
