@@ -151,7 +151,7 @@ float GetGamepadAxis(int a0, int axis) {
   sceCtrlPeekBufferPositiveExt2(0, &pad, 1);
 
   SceTouchData touch;
-  sceTouchPeek(SCE_TOUCH_PORT_BACK, &touch, 1);
+  sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1);
 
   float val = 0.0f;
 
@@ -180,12 +180,12 @@ float GetGamepadAxis(int a0, int axis) {
       }
 
       for (int i = 0; i < touch.reportNum; i++) {
-        if (touch.report[i].y < (panelInfoBack.minAaY + panelInfoBack.maxAaY) / 2) {
-          if (touch.report[i].x < (panelInfoBack.minAaX + panelInfoBack.maxAaX) / 2) {
+        if (touch.report[i].y < (panelInfoFront.minAaY + panelInfoFront.maxAaY) / 2) {
+          if (touch.report[i].x < (panelInfoFront.minAaX + panelInfoFront.maxAaX) / 2) {
             if (touch.report[i].x >= 100)
               if (axis == 4) val = 1.0f;
           } else {
-            if (touch.report[i].x < (panelInfoBack.maxAaX - 100))
+            if (touch.report[i].x < (panelInfoFront.maxAaX - 100))
               if (axis == 5) val = 1.0f;
           }
         }
