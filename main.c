@@ -8,9 +8,15 @@
 
 #include <psp2/io/dirent.h>
 #include <psp2/io/fcntl.h>
+#include <psp2/kernel/clib.h>
+#include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/threadmgr.h>
+#include <psp2/appmgr.h>
+#include <psp2/apputil.h>
+#include <psp2/ctrl.h>
 #include <psp2/power.h>
 #include <psp2/touch.h>
+#include <taihen.h>
 #include <kubridge.h>
 #include <vitashark.h>
 #include <vitaGL.h>
@@ -33,16 +39,35 @@
 
 #include "main.h"
 #include "config.h"
+#include "dialog.h"
+#include "fios.h"
 #include "so_util.h"
 #include "jni_patch.h"
+#include "mpg123_patch.h"
 #include "openal_patch.h"
 #include "opengl_patch.h"
 
-int _newlib_heap_size_user = MEMORY_MB * 1024 * 1024;
+#include "libc_bridge.h"
+
+int sceLibcHeapSize = MEMORY_SCELIBC_MB * 1024 * 1024;
+int _newlib_heap_size_user = MEMORY_NEWLIB_MB * 1024 * 1024;
 
 SceTouchPanelInfo panelInfoFront, panelInfoBack;
 
+void *__wrap_memcpy(void *dest, const void *src, size_t n) {
+  return sceClibMemcpy(dest, src, n);
+}
+
+void *__wrap_memmove(void *dest, const void *src, size_t n) {
+  return sceClibMemmove(dest, src, n);
+}
+
+void *__wrap_memset(void *s, int c, size_t n) {
+  return sceClibMemset(s, c, n);
+}
+
 int debugPrintf(char *text, ...) {
+#ifdef DEBUG
   va_list list;
   static char string[0x1000];
 
@@ -55,11 +80,12 @@ int debugPrintf(char *text, ...) {
     sceIoWrite(fd, string, strlen(string));
     sceIoClose(fd);
   }
-
+#endif
   return 0;
 }
 
 int __android_log_print(int prio, const char *tag, const char *fmt, ...) {
+#ifdef DEBUG
   va_list list;
   static char string[0x1000];
 
@@ -68,7 +94,7 @@ int __android_log_print(int prio, const char *tag, const char *fmt, ...) {
   va_end(list);
 
   debugPrintf("%s: %s\n", tag, string);
-
+#endif
   return 0;
 }
 
@@ -173,6 +199,7 @@ int thread_stub(SceSize args, uintptr_t *argp) {
   return sceKernelExitDeleteThread(0);
 }
 
+// TODO: Optimize threads
 void *OS_ThreadLaunch(int (* func)(), void *arg, int r2, char *name, int r4, int priority) {
   int vita_priority;
 
@@ -209,6 +236,11 @@ void *OS_ThreadLaunch(int (* func)(), void *arg, int r2, char *name, int r4, int
   }
 
   return NULL;
+}
+
+void OS_ThreadWait(void *thread) {
+  if (thread)
+    sceKernelWaitThreadEnd(*(int *)(thread + 0x24), NULL, NULL);
 }
 
 GLfloat is_fixed;
@@ -261,11 +293,6 @@ void glUseProgramHook(GLuint program) {
   cur_prog = program;
 }
 
-void OS_ThreadWait(void *thread) {
-  if (thread)
-    sceKernelWaitThreadEnd(*(int *)(thread + 0x24), NULL, NULL);
-}
-
 extern void *__cxa_guard_acquire;
 extern void *__cxa_guard_release;
 
@@ -307,6 +334,14 @@ void *sceClibMemclr(void *dst, SceSize len) {
 
 void *sceClibMemset2(void *dst, SceSize len, int ch) {
   return sceClibMemset(dst, ch, len);
+}
+
+int stat_hook(const char *pathname, void *statbuf) {
+  struct stat st;
+  int res = stat(pathname, &st);
+  if (res == 0)
+    *(int *)(statbuf + 0x50) = st.st_mtime;
+  return res;
 }
 
 static int __stack_chk_guard_fake = 0x42424242;
@@ -456,20 +491,20 @@ static DynLibFunction dynlib_functions[] = {
 
   { "abort", (uintptr_t)&abort },
 
-  { "fclose", (uintptr_t)&fclose },
-  { "feof", (uintptr_t)&feof },
+  { "fclose", (uintptr_t)&sceLibcBridge_fclose },
+  { "feof", (uintptr_t)&sceLibcBridge_feof },
   // { "fflush", (uintptr_t)&fflush },
   // { "fgetc", (uintptr_t)&fgetc },
   // { "fgets", (uintptr_t)&fgets },
-  { "fopen", (uintptr_t)&fopen },
+  { "fopen", (uintptr_t)&sceLibcBridge_fopen },
   // { "fprintf", (uintptr_t)&fprintf },
   // { "fputc", (uintptr_t)&fputc },
   // { "fputs", (uintptr_t)&fputs },
   // { "fputwc", (uintptr_t)&fputwc },
-  { "fread", (uintptr_t)&fread },
-  { "fseek", (uintptr_t)&fseek },
-  { "ftell", (uintptr_t)&ftell },
-  { "fwrite", (uintptr_t)&fwrite },
+  { "fread", (uintptr_t)&sceLibcBridge_fread },
+  { "fseek", (uintptr_t)&sceLibcBridge_fseek },
+  { "ftell", (uintptr_t)&sceLibcBridge_ftell },
+  { "fwrite", (uintptr_t)&sceLibcBridge_fwrite },
 
   { "getenv", (uintptr_t)&getenv },
   // { "gettid", (uintptr_t)&gettid },
@@ -540,8 +575,8 @@ static DynLibFunction dynlib_functions[] = {
   { "longjmp", (uintptr_t)&longjmp },
   { "setjmp", (uintptr_t)&setjmp },
 
-  { "memchr", (uintptr_t)&memchr },
-  { "memcmp", (uintptr_t)&memcmp },
+  { "memchr", (uintptr_t)&sceClibMemchr },
+  { "memcmp", (uintptr_t)&sceClibMemcmp },
 
   { "puts", (uintptr_t)&puts },
   // { "putchar", (uintptr_t)&putchar },
@@ -560,7 +595,7 @@ static DynLibFunction dynlib_functions[] = {
   // { "opendir", (uintptr_t)&opendir },
   // { "read", (uintptr_t)&read },
   // { "readdir", (uintptr_t)&readdir },
-  { "stat", (uintptr_t)&stat },
+  { "stat", (uintptr_t)&stat_hook },
   // { "write", (uintptr_t)&write },
 
   { "stderr", (uintptr_t)&stderr_fake },
@@ -571,9 +606,9 @@ static DynLibFunction dynlib_functions[] = {
   { "strcpy", (uintptr_t)&strcpy },
   { "strerror", (uintptr_t)&strerror },
   { "strlen", (uintptr_t)&strlen },
-  { "strncasecmp", (uintptr_t)&strncasecmp },
-  { "strncmp", (uintptr_t)&strncmp },
-  { "strncpy", (uintptr_t)&strncpy },
+  { "strncasecmp", (uintptr_t)&sceClibStrncasecmp },
+  { "strncmp", (uintptr_t)&sceClibStrncmp },
+  { "strncpy", (uintptr_t)&sceClibStrncpy },
   { "strpbrk", (uintptr_t)&strpbrk },
   { "strstr", (uintptr_t)&strstr },
   { "strtof", (uintptr_t)&strtof },
@@ -587,6 +622,16 @@ static DynLibFunction dynlib_functions[] = {
   { "usleep", (uintptr_t)&usleep },
 };
 
+int check_kubridge(void) {
+  int search_unk[2];
+  return _vshKernelSearchModuleByName("kubridge", search_unk);
+}
+
+int file_exists(const char *path) {
+  SceIoStat stat;
+  return sceIoGetstat(path, &stat) >= 0;
+}
+
 int main(int argc, char *argv[]) {
   sceCtrlSetSamplingModeExt(SCE_CTRL_MODE_ANALOG_WIDE);
   sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
@@ -599,12 +644,20 @@ int main(int argc, char *argv[]) {
   scePowerSetGpuClockFrequency(222);
   scePowerSetGpuXbarClockFrequency(166);
 
-  stderr_fake = stderr;
+  if (check_kubridge() < 0)
+    fatal_error("Error kubridge.skprx is not installed.");
 
-  so_load(SO_PATH);
+  if (!file_exists("ur0:/data/libshacccg.suprx"))
+    fatal_error("Error libshacccg.suprx is not installed.");
+
+  if (so_load(SO_PATH) < 0)
+    fatal_error("Error could not load %s.", SO_PATH);
+
+  stderr_fake = stderr;
   so_relocate();
   so_resolve(dynlib_functions, sizeof(dynlib_functions) / sizeof(DynLibFunction), 1);
 
+  patch_mpg123();
   patch_openal();
   patch_opengl();
   patch_game();
@@ -613,8 +666,11 @@ int main(int argc, char *argv[]) {
   so_execute_init_array();
   so_free_temp();
 
+  if (fios_init() < 0)
+    fatal_error("Error could not initialize fios.");
+
   vglSetupRuntimeShaderCompiler(SHARK_OPT_UNSAFE, SHARK_ENABLE, SHARK_ENABLE, SHARK_ENABLE);
-  vglInitExtended(0, SCREEN_W, SCREEN_H, 16 * 1024 * 1024, SCE_GXM_MULTISAMPLE_4X);
+  vglInitExtended(0, SCREEN_W, SCREEN_H, MEMORY_VITAGL_THRESHOLD_MB * 1024 * 1024, SCE_GXM_MULTISAMPLE_4X);
   vglUseVram(GL_TRUE);
 
   jni_load();

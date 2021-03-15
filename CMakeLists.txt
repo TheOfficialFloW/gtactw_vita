@@ -14,13 +14,16 @@ set(VITA_APP_NAME "GTA: CTW")
 set(VITA_TITLEID  "GTACTW000")
 set(VITA_MKSFOEX_FLAGS "-d ATTRIBUTE2=12")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wl,-q -Wall -O3 -mfloat-abi=softfp")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wl,-q,--wrap,memcpy,--wrap,memmove,--wrap,memset -Wall -O3 -mfloat-abi=softfp")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11")
 
 add_executable(GTACTW
   main.c
+  dialog.c
+  fios.c
   so_util.c
   jni_patch.c
+  mpg123_patch.c
   openal_patch.c
   opengl_patch.c
 )
@@ -30,6 +33,7 @@ target_link_libraries(GTACTW
   stdc++
   m
   mathneon
+  mpg123
   openal
   vitaGL
   vitashark
@@ -42,11 +46,12 @@ target_link_libraries(GTACTW
   SceDisplay_stub
   SceFios2_stub
   SceGxm_stub
+  SceLibcBridge_stub
   SceShaccCg_stub
   SceSysmodule_stub
   ScePower_stub
   SceTouch_stub
-  SceAppUtil_stub
+  SceVshBridge_stub
 )
 
 vita_create_self(eboot.bin GTACTW UNSAFE)

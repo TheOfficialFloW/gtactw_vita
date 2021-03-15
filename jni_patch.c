@@ -6,6 +6,7 @@
  * of the MIT license.  See the LICENSE file for details.
  */
 
+#include <psp2/io/fcntl.h>
 #include <psp2/ctrl.h>
 #include <psp2/touch.h>
 #include <vitaGL.h>
@@ -72,7 +73,7 @@ int GetDeviceType(void) {
   // 0x1: phone
   // 0x2: tegra
   // low memory is < 256
-  return (MEMORY_MB << 6) | (3 << 2) | 0x1;
+  return (MEMORY_NEWLIB_MB << 6) | (3 << 2) | 0x1;
 }
 
 int GetDeviceLocale(void) {
@@ -203,7 +204,7 @@ int swapBuffers(void) {
 }
 
 int InitEGLAndGLES2(void) {
-  vglWaitVblankStart(GL_FALSE);
+  vglWaitVblankStart(GL_TRUE);
   return 1;
 }
 
