@@ -199,29 +199,32 @@ int thread_stub(SceSize args, uintptr_t *argp) {
   return sceKernelExitDeleteThread(0);
 }
 
-// TODO: Optimize threads
-void *OS_ThreadLaunch(int (* func)(), void *arg, int r2, char *name, int r4, int priority) {
+// ResourceMan with cpu 1 and priority 1
+// LoadBankThread with cpu 1 and priority 1
+// LoadResidentThread with cpu 1 and priority 0
+// SoundStreamThread with cpu 1 and priority 1
+void *OS_ThreadLaunch(int (* func)(), void *arg, int cpu, char *name, int unused, int priority) {
   int vita_priority;
+  int vita_affinity;
 
-  switch (priority) {
-    case 0:
-      vita_priority = 0x40;
-      break;
-    case 1:
-      vita_priority = 0x10000100 - 31;
-      break;
-    case 2:
-      vita_priority = 0x10000100 - 15;
-      break;
-    case 3:
-      vita_priority = 0x10000100;
-      break;
-    default:
-      vita_priority = 0x10000100;
-      break;
+  if (strcmp(name, "ResourceMan") == 0) {
+    vita_priority = 65;
+    vita_affinity = 0x20000;
+  } else if (strcmp(name, "SoundStreamThread") == 0) {
+    vita_priority = 66;
+    vita_affinity = 0x20000;
+  } else if (strcmp(name, "LoadBankThread") == 0) {
+    vita_priority = 65;
+    vita_affinity = 0x10000;
+  } else if (strcmp(name, "LoadResidentThread") == 0) {
+    vita_priority = 66;
+    vita_affinity = 0x10000;
+  } else {
+    vita_priority = 0x10000100;
+    vita_affinity = 0;
   }
 
-  SceUID thid = sceKernelCreateThread(name, (SceKernelThreadEntry)thread_stub, vita_priority, 128 * 1024, 0, 0, NULL);
+  SceUID thid = sceKernelCreateThread(name, (SceKernelThreadEntry)thread_stub, vita_priority, 128 * 1024, 0, vita_affinity, NULL);
   if (thid >= 0) {
     char *out = malloc(0x48);
     *(int *)(out + 0x24) = thid;
@@ -633,6 +636,9 @@ int file_exists(const char *path) {
 }
 
 int main(int argc, char *argv[]) {
+  sceKernelChangeThreadPriority(0, 65);
+  sceKernelChangeThreadCpuAffinityMask(0, 0x40000);
+
   sceCtrlSetSamplingModeExt(SCE_CTRL_MODE_ANALOG_WIDE);
   sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
   sceTouchSetSamplingState(SCE_TOUCH_PORT_BACK, SCE_TOUCH_SAMPLING_STATE_START);
