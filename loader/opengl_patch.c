@@ -62,14 +62,14 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
     }
     if (flags & FLAG_ALPHA_TEST)
       CShaderProgram__AddFragmentShaderString(this, "if ( gl_FragColor.a < 0.03125 ){ discard; }");
-    if (flags & FLAG_DEBUG1) {
-      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.r = 1.0;");
-      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
-    }
-    if (flags & FLAG_DEBUG2) {
-      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.b = 1.0;");
-      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
-    }
+    // if (flags & FLAG_DEBUG1) {
+      // CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.r = 1.0;");
+      // CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
+    // }
+    // if (flags & FLAG_DEBUG2) {
+      // CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.b = 1.0;");
+      // CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
+    // }
     CShaderProgram__AddFragmentShaderString(this, "return gl_FragColor;");
     CShaderProgram__AddFragmentShaderString(this, "}");
     shader = glCreateShader(shaderType);
