@@ -18,14 +18,14 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wl,-q,--wrap,memcpy,--wrap,memmove,--wra
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11")
 
 add_executable(GTACTW
-  main.c
-  dialog.c
-  fios.c
-  so_util.c
-  jni_patch.c
-  mpg123_patch.c
-  openal_patch.c
-  opengl_patch.c
+  loader/main.c
+  loader/dialog.c
+  loader/fios.c
+  loader/so_util.c
+  loader/jni_patch.c
+  loader/mpg123_patch.c
+  loader/openal_patch.c
+  loader/opengl_patch.c
 )
 
 target_link_libraries(GTACTW
