@@ -283,9 +283,9 @@ void OS_ThreadWait(void *thread) {
     sceKernelWaitThreadEnd(*(int *)(thread + 0x24), NULL, NULL);
 }
 
+
+GLint is_fixed_unifs[32];
 GLfloat is_fixed;
-GLint is_fixed_unif_0;
-GLint is_fixed_unif_4;
 
 void glVertexAttribPointerHook(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer) {
   if (index == 0) {
@@ -301,31 +301,13 @@ void glVertexAttribPointerHook(GLuint index, GLint size, GLenum type, GLboolean 
 
 GLuint cur_prog;
 void glDrawArraysHook(GLenum mode, GLint first, GLsizei count) {
-  switch (cur_prog) {
-  case 0:
-    glUniform1f(is_fixed_unif_0, is_fixed);
-    break;
-  case 4:
-    glUniform1f(is_fixed_unif_4, is_fixed);
-    break;
-  default:
-    break;
-  }
+  glUniform1f(is_fixed_unifs[cur_prog], is_fixed);
   glDrawArrays(mode, first, count);
 }
 
 void glLinkProgramHook(GLuint program) {
   glLinkProgram(program);
-  switch (program) {
-  case 0:
-    is_fixed_unif_0 = glGetUniformLocation(program, "is_fixed");
-    break;
-  case 4:
-    is_fixed_unif_4 = glGetUniformLocation(program, "is_fixed");
-    break;
-  default:
-    break;
-  }
+  is_fixed_unifs[program] = glGetUniformLocation(program, "is_fixed");
 }
 
 void glUseProgramHook(GLuint program) {
