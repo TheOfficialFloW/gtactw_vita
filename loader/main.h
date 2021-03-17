@@ -5,7 +5,6 @@
 #include "config.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define LERP(value, from_max, to_max) ((((value * 10) * (to_max * 10)) / (from_max * 10)) / 10)
 
 int debugPrintf(char *text, ...);
 

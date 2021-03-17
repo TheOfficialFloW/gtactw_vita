@@ -126,9 +126,8 @@ int OS_ScreenGetWidth(void) {
 
 static int (* AND_TouchEvent)(int action, int report, int x, int y);
 
-static int lastX[2] = { 0, 0 };
-static int lastY[2] = { 0, 0 };
-static int lastTouched[2] = { 0, 0 };
+static int lastX[2] = { -1, -1 };
+static int lastY[2] = { -1, -1 };
 
 int ProcessEvents(void) {
   SceTouchData touch;
@@ -136,22 +135,20 @@ int ProcessEvents(void) {
 
   for (int i = 0; i < 2; i++) {
     if (i < touch.reportNum) {
-      int x = LERP(touch.report[i].x, 1920, SCREEN_W);
-      int y = LERP(touch.report[i].y, 1088, SCREEN_H);
-      if (lastTouched[i] == 0)
+      int x = (int)((float)touch.report[i].x * (float)SCREEN_W / 1920.0f);
+      int y = (int)((float)touch.report[i].y * (float)SCREEN_H / 1088.0f);
+
+      if (lastX[i] != -1 || lastY[i] != -1)
         AND_TouchEvent(ACTION_DOWN, i, x, y);
-      else if (lastX[i] != x || lastY[i] != y)
+      else
         AND_TouchEvent(ACTION_MOVE, i, x, y);
       lastX[i] = x;
       lastY[i] = y;
-      lastTouched[i] = 1;
     } else {
-      if (lastX[i] != 0 || lastY[i] != 0) {
+      if (lastX[i] != -1 || lastY[i] != -1)
         AND_TouchEvent(ACTION_UP, i, lastX[i], lastY[i]);
-        lastX[i] = 0;
-        lastY[i] = 0;
-      }
-      lastTouched[i] = 0;
+      lastX[i] = -1;
+      lastY[i] = -1;
     }
   }
 
@@ -305,9 +302,8 @@ void patch_game(void) {
   hook_thumb(so_find_addr("_Z13ProcessEventsb"), (uintptr_t)ProcessEvents);
 }
 
+static GLint is_fixed_unifs[32];
 static GLfloat is_fixed;
-static GLint is_fixed_unif_0;
-static GLint is_fixed_unif_4;
 
 void glVertexAttribPointerHook(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer) {
   if (index == 0) {
@@ -323,31 +319,13 @@ void glVertexAttribPointerHook(GLuint index, GLint size, GLenum type, GLboolean 
 
 GLuint cur_prog;
 void glDrawArraysHook(GLenum mode, GLint first, GLsizei count) {
-  switch (cur_prog) {
-  case 0:
-    glUniform1f(is_fixed_unif_0, is_fixed);
-    break;
-  case 4:
-    glUniform1f(is_fixed_unif_4, is_fixed);
-    break;
-  default:
-    break;
-  }
+  glUniform1f(is_fixed_unifs[cur_prog], is_fixed);
   glDrawArrays(mode, first, count);
 }
 
 void glLinkProgramHook(GLuint program) {
   glLinkProgram(program);
-  switch (program) {
-  case 0:
-    is_fixed_unif_0 = glGetUniformLocation(program, "is_fixed");
-    break;
-  case 4:
-    is_fixed_unif_4 = glGetUniformLocation(program, "is_fixed");
-    break;
-  default:
-    break;
-  }
+  is_fixed_unifs[program] = glGetUniformLocation(program, "is_fixed");
 }
 
 void glUseProgramHook(GLuint program) {

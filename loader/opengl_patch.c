@@ -27,23 +27,8 @@ int (* CShaderProgram__AddVertexShaderString)(void *this, char *string);
 #define FLAG_DEBUG1      0x40
 #define FLAG_DEBUG2      0x80
 
-uint8_t CompilerRefCount = 0;
-
 int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int shaderType) {
   int shader;
-
-  uint8_t is_fixed = 0;
-  CompilerRefCount++;
-  if (CompilerRefCount == 1) { // Program 1 - Vertex (This shader is used sometimes with GL_FIXED position attr)
-    is_fixed = 1;
-  }
-  if (CompilerRefCount == 7) { // Program 4 - Vertex (This shader is used sometimes with GL_FIXED position attr)
-    is_fixed = 1;
-  }
-  if (CompilerRefCount == 9) { // Program 5 - Vertex (This shader is used always with GL_FIXED position attr)
-    is_fixed = 2;
-  }
-
   char **shaderSource;
 
   // FRAGMENT SHADER
@@ -84,8 +69,7 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
     if (flags & FLAG_TEXTURE)
       CShaderProgram__AddVertexShaderString(this, "float2 vUV,");
     CShaderProgram__AddVertexShaderString(this, "float4 vColor,");
-    if (is_fixed == 1)
-      CShaderProgram__AddVertexShaderString(this, "uniform float is_fixed,");
+    CShaderProgram__AddVertexShaderString(this, "uniform float is_fixed,");
     CShaderProgram__AddVertexShaderString(this, "uniform float4x4 matModelView,");
     CShaderProgram__AddVertexShaderString(this, "uniform float4x4 matProj,");
     if (flags & FLAG_NORMALS) {
@@ -106,10 +90,7 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
     CShaderProgram__AddVertexShaderString(this, "fixed4 out Out_Color : COLOR0,");
     CShaderProgram__AddVertexShaderString(this, "float4 out gl_Position : POSITION");
     CShaderProgram__AddVertexShaderString(this, "){");
-    if (is_fixed == 1)
-      CShaderProgram__AddVertexShaderString(this, "if (is_fixed > 0.0)");
-    if (is_fixed)
-      CShaderProgram__AddVertexShaderString(this, "vPos = floatToIntBits(vPos) / 65536.0;");
+    CShaderProgram__AddVertexShaderString(this, "if (is_fixed > 0.0) vPos = floatToIntBits(vPos) / 65536.0;");
     if (flags & FLAG_3D) {
       CShaderProgram__AddVertexShaderString(this, "float4 vecPos = float4 ( vPos, 1.0 );");
       CShaderProgram__AddVertexShaderString(this, "gl_Position = mul ( mul ( vecPos, matModelView ), matProj );");
