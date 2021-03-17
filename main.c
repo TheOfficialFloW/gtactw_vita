@@ -215,10 +215,12 @@ int sem_wait_fake(int *uid) {
 }
 
 int sem_trywait_fake(int *uid) {
-  SceUInt timeout = 0;
-  if (sceKernelWaitSema(*uid, 1, &timeout) < 0)
-    return -1;
-  return 0;
+  // SceUInt timeout = 0;
+  // if (sceKernelWaitSema(*uid, 1, &timeout) < 0)
+    // return -1;
+  // return 0;
+  errno = 11;
+  return -1;
 }
 
 int sem_destroy_fake(int *uid) {

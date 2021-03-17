@@ -80,25 +80,30 @@ int GetDeviceLocale(void) {
   return 0; // english
 }
 
-int GetGamepadType(void) {
-  // 0, 5, 6: XBOX 360
-  // 4: MogaPocket
-  // 7: MogaPro
-  // 8: PS3
-  // 9: IOSExtended
-  // 10: IOSSimple
-  // return -1 for touch
+static SceCtrlData pad;
+static SceTouchData touch_front;
+
+// 0, 5, 6: XBOX 360
+// 4: MogaPocket
+// 7: MogaPro
+// 8: PS3
+// 9: IOSExtended
+// 10: IOSSimple
+int GetGamepadType(int port) {
+  if (port != 0 && port != 1)
+    return -1;
+
+  if (sceCtrlPeekBufferPositiveExt2(port == 0 ? 0 : 2, &pad, 1) < 0)
+    return -1;
+
+  if (port == 0) {
+    sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch_front, 1);
+  }
+
   return 8;
 }
-
-int GetGamepadButtons(void) {
+int GetGamepadButtons(int port) {
   int mask = 0;
-
-  SceCtrlData pad;
-  sceCtrlPeekBufferPositiveExt2(0, &pad, 1);
-
-  SceTouchData touch;
-  sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1);
 
   if (pad.buttons & SCE_CTRL_CROSS)
     mask |= 0x1;
@@ -129,14 +134,14 @@ int GetGamepadButtons(void) {
   if (pad.buttons & SCE_CTRL_R3)
     mask |= 0x2000;
 
-  for (int i = 0; i < touch.reportNum; i++) {
-    for (int i = 0; i < touch.reportNum; i++) {
-      if (touch.report[i].y >= (panelInfoFront.minAaY + panelInfoFront.maxAaY) / 2) {
-        if (touch.report[i].x < (panelInfoFront.minAaX + panelInfoFront.maxAaX) / 2) {
-          if (touch.report[i].x >= 100)
+  for (int i = 0; i < touch_front.reportNum; i++) {
+    for (int i = 0; i < touch_front.reportNum; i++) {
+      if (touch_front.report[i].y >= (panelInfoFront.minAaY + panelInfoFront.maxAaY) / 2) {
+        if (touch_front.report[i].x < (panelInfoFront.minAaX + panelInfoFront.maxAaX) / 2) {
+          if (touch_front.report[i].x >= 100)
             mask |= 0x1000; // L3
         } else {
-          if (touch.report[i].x < (panelInfoFront.maxAaX - 100))
+          if (touch_front.report[i].x < (panelInfoFront.maxAaX - 100))
             mask |= 0x2000; // R3
         }
       }
@@ -146,13 +151,7 @@ int GetGamepadButtons(void) {
   return mask;
 }
 
-float GetGamepadAxis(int a0, int axis) {
-  SceCtrlData pad;
-  sceCtrlPeekBufferPositiveExt2(0, &pad, 1);
-
-  SceTouchData touch;
-  sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touch, 1);
-
+float GetGamepadAxis(int port, int axis) {
   float val = 0.0f;
 
   switch (axis) {
@@ -179,13 +178,13 @@ float GetGamepadAxis(int a0, int axis) {
         break;
       }
 
-      for (int i = 0; i < touch.reportNum; i++) {
-        if (touch.report[i].y < (panelInfoFront.minAaY + panelInfoFront.maxAaY) / 2) {
-          if (touch.report[i].x < (panelInfoFront.minAaX + panelInfoFront.maxAaX) / 2) {
-            if (touch.report[i].x >= 100)
+      for (int i = 0; i < touch_front.reportNum; i++) {
+        if (touch_front.report[i].y < (panelInfoFront.minAaY + panelInfoFront.maxAaY) / 2) {
+          if (touch_front.report[i].x < (panelInfoFront.minAaX + panelInfoFront.maxAaX) / 2) {
+            if (touch_front.report[i].x >= 100)
               if (axis == 4) val = 1.0f;
           } else {
-            if (touch.report[i].x < (panelInfoFront.maxAaX - 100))
+            if (touch_front.report[i].x < (panelInfoFront.maxAaX - 100))
               if (axis == 5) val = 1.0f;
           }
         }
@@ -275,9 +274,9 @@ float CallFloatMethodV(void *env, void *obj, int methodID, uintptr_t *args) {
 int CallIntMethodV(void *env, void *obj, int methodID, uintptr_t *args) {
   switch (methodID) {
     case GET_GAMEPAD_TYPE:
-      return GetGamepadType();
+      return GetGamepadType(args[0]);
     case GET_GAMEPAD_BUTTONS:
-      return GetGamepadButtons();
+      return GetGamepadButtons(args[0]);
     case GET_DEVICE_INFO:
       return GetDeviceInfo();
     case GET_DEVICE_TYPE:
