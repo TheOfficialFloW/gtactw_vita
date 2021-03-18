@@ -650,6 +650,12 @@ int file_exists(const char *path) {
 }
 
 int main(int argc, char *argv[]) {
+  SceAppUtilInitParam init_param;
+  SceAppUtilBootParam boot_param;
+  memset(&init_param, 0, sizeof(SceAppUtilInitParam));
+  memset(&boot_param, 0, sizeof(SceAppUtilBootParam));
+  sceAppUtilInit(&init_param, &boot_param);
+
   sceKernelChangeThreadPriority(0, 65);
   sceKernelChangeThreadCpuAffinityMask(0, 0x40000);
 

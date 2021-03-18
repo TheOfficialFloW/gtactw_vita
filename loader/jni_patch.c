@@ -7,7 +7,9 @@
  */
 
 #include <psp2/io/fcntl.h>
+#include <psp2/apputil.h>
 #include <psp2/ctrl.h>
+#include <psp2/system_param.h>
 #include <psp2/touch.h>
 #include <vitaGL.h>
 
@@ -77,7 +79,22 @@ int GetDeviceType(void) {
 }
 
 int GetDeviceLocale(void) {
-  return 0; // english
+  int lang = -1;
+  sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &lang);
+  switch (lang) {
+    case SCE_SYSTEM_PARAM_LANG_FRENCH:
+      return 1;
+    case SCE_SYSTEM_PARAM_LANG_GERMAN:
+      return 2;
+    case SCE_SYSTEM_PARAM_LANG_ITALIAN:
+      return 3;
+    case SCE_SYSTEM_PARAM_LANG_SPANISH:
+      return 4;
+    case SCE_SYSTEM_PARAM_LANG_JAPANESE:
+      return 5;
+    default:
+      return 0;
+  }
 }
 
 static SceCtrlData pad;
