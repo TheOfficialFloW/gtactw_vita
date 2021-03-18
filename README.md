@@ -4,9 +4,20 @@
 
 This is a wrapper/port of *Grand Theft Auto: Chinatown Wars Android* for the *PS Vita*. The port works by loading the official Android ARMv7 executable in memory, resolving its imports with native functions and patching it in order to properly run.
 
+## Changelog
+
+### v1.1
+
+- Added support for different languages based on the system settings (French, German, Italian, Spanish and Japanese).
+- Reduced memory usage in order to support multitasking with System Applications.
+
+### v1.0
+
+- Initial release.
+
 ## Setup Instructions (For End Users)
 
-(If you have already installed the game and want to update to a newer release, you can simply install [GTACTW.vpk](https://github.com/TheOfficialFloW/gtactw_vita/releases/download/v1.0/GTACTW.vpk) on your *PS Vita*).
+(If you have already installed the game and want to update to a newer release, you can simply install [GTACTW.vpk](https://github.com/TheOfficialFloW/gtactw_vita/releases/download/v1.1/GTACTW.vpk) on your *PS Vita*).
 
 In order to properly install the game, you'll have to follow these steps precisely:
 
@@ -26,7 +37,7 @@ In order to properly install the game, you'll have to follow these steps precise
 - Open the apk with your zip explorer, extract the `assets` folder from your `.apk` file to `ux0:data` and rename it to `gtactw`. The result would be `ux0:data/gtactw/`
 - Still in the apk, extract the file `libCTW.so` from the `lib/armeabi-v7a` folder to `ux0:data/gtactw`. 
 - Open the `main.4.com.rockstargames.gtactw.obb` with your zip explorer (`.obb` files are zip files just like `.apk` files so just rename the `.obb` to `.zip`) and extract the contents to `ux0:data/gtactw`.
-- Install [GTACTW.vpk](https://github.com/TheOfficialFloW/gtactw_vita/releases/download/v1.0/GTACTW.vpk) on your *PS Vita*.
+- Install [GTACTW.vpk](https://github.com/TheOfficialFloW/gtactw_vita/releases/download/v1.1/GTACTW.vpk) on your *PS Vita*.
 
 ## Build Instructions (For Developers)
 
