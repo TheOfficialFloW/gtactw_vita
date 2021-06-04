@@ -52,6 +52,9 @@
 int sceLibcHeapSize = MEMORY_SCELIBC_MB * 1024 * 1024;
 int _newlib_heap_size_user = MEMORY_NEWLIB_MB * 1024 * 1024;
 
+unsigned int _oal_thread_priority = 64;
+unsigned int _oal_thread_affinity = 0x40000;
+
 SceTouchPanelInfo panelInfoFront, panelInfoBack;
 
 void *__wrap_memcpy(void *dest, const void *src, size_t n) {
@@ -248,10 +251,10 @@ void *OS_ThreadLaunch(int (* func)(), void *arg, int cpu, char *name, int unused
     vita_affinity = 0x20000;
   } else if (strcmp(name, "LoadBankThread") == 0) {
     vita_priority = 65;
-    vita_affinity = 0x10000;
+    vita_affinity = 0x40000;
   } else if (strcmp(name, "LoadResidentThread") == 0) {
     vita_priority = 66;
-    vita_affinity = 0x10000;
+    vita_affinity = 0x40000;
   } else {
     vita_priority = 0x10000100;
     vita_affinity = 0;
@@ -656,8 +659,8 @@ int main(int argc, char *argv[]) {
   memset(&boot_param, 0, sizeof(SceAppUtilBootParam));
   sceAppUtilInit(&init_param, &boot_param);
 
-  sceKernelChangeThreadPriority(0, 65);
-  sceKernelChangeThreadCpuAffinityMask(0, 0x40000);
+  sceKernelChangeThreadPriority(0, 64);
+  sceKernelChangeThreadCpuAffinityMask(0, 0x10000);
 
   sceCtrlSetSamplingModeExt(SCE_CTRL_MODE_ANALOG_WIDE);
   sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
@@ -696,8 +699,9 @@ int main(int argc, char *argv[]) {
     fatal_error("Error could not initialize fios.");
 
   vglSetupRuntimeShaderCompiler(SHARK_OPT_UNSAFE, SHARK_ENABLE, SHARK_ENABLE, SHARK_ENABLE);
-  vglInitExtended(0, SCREEN_W, SCREEN_H, MEMORY_VITAGL_THRESHOLD_MB * 1024 * 1024, SCE_GXM_MULTISAMPLE_4X);
+  vglSetupGarbageCollector(127, 0x10000);
   vglUseVram(GL_TRUE);
+  vglInitExtended(0, SCREEN_W, SCREEN_H, MEMORY_VITAGL_THRESHOLD_MB * 1024 * 1024, SCE_GXM_MULTISAMPLE_4X);
 
   jni_load();
 

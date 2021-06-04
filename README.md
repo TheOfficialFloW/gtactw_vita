@@ -6,6 +6,11 @@ This is a wrapper/port of *Grand Theft Auto: Chinatown Wars Android* for the *PS
 
 ## Changelog
 
+### v1.2
+
+- Fixed issue where characters were sometimes invisible during cutscenes.
+- Improved performance by updating to latest vitaGL.
+
 ### v1.1
 
 - Added support for different languages based on the system settings (French, German, Italian, Spanish and Japanese).
@@ -17,7 +22,7 @@ This is a wrapper/port of *Grand Theft Auto: Chinatown Wars Android* for the *PS
 
 ## Setup Instructions (For End Users)
 
-(If you have already installed the game and want to update to a newer release, you can simply install [GTACTW.vpk](https://github.com/TheOfficialFloW/gtactw_vita/releases/download/v1.1/GTACTW.vpk) on your *PS Vita*).
+(If you have already installed the game and want to update to a newer release, you can simply install [GTACTW.vpk](https://github.com/TheOfficialFloW/gtactw_vita/releases/download/v1.2/GTACTW.vpk) on your *PS Vita*).
 
 In order to properly install the game, you'll have to follow these steps precisely:
 
@@ -37,7 +42,7 @@ In order to properly install the game, you'll have to follow these steps precise
 - Open the apk with your zip explorer, extract the `assets` folder from your `.apk` file to `ux0:data` and rename it to `gtactw`. The result would be `ux0:data/gtactw/`
 - Still in the apk, extract the file `libCTW.so` from the `lib/armeabi-v7a` folder to `ux0:data/gtactw`. 
 - Open the `main.4.com.rockstargames.gtactw.obb` with your zip explorer (`.obb` files are zip files just like `.apk` files so just rename the `.obb` to `.zip`) and extract the contents to `ux0:data/gtactw`.
-- Install [GTACTW.vpk](https://github.com/TheOfficialFloW/gtactw_vita/releases/download/v1.1/GTACTW.vpk) on your *PS Vita*.
+- Install [GTACTW.vpk](https://github.com/TheOfficialFloW/gtactw_vita/releases/download/v1.2/GTACTW.vpk) on your *PS Vita*.
 
 ## Build Instructions (For Developers)
 
@@ -90,7 +95,7 @@ Additionally, you'll need these libraries to be compiled as well with `-mfloat-a
 - [vitaGL](https://github.com/Rinnegatamante/vitaGL)
 
   - ````bash
-    make HAVE_SBRK=1 SOFTFP_ABI=1 install
+    make SOFTFP_ABI=1 install
     ````
 
 Finally, in the folder of `gtactw_vita`, install SceLibc stubs using:
