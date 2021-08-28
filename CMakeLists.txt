@@ -12,8 +12,9 @@ project(GTACTW C CXX)
 include("${VITASDK}/share/vita.cmake" REQUIRED)
 set(VITA_APP_NAME "GTA: CTW")
 set(VITA_TITLEID  "GTACTW000")
+set(VITA_VERSION  "01.30")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wl,-q,--wrap,memcpy,--wrap,memmove,--wrap,memset -Wall -O3 -mfloat-abi=softfp")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wl,-q,--wrap,memcpy,--wrap,memmove,--wrap,memset -D_GNU_SOURCE -Wall -O3 -mfloat-abi=softfp")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -std=c++11")
 
 add_executable(GTACTW
@@ -44,6 +45,7 @@ target_link_libraries(GTACTW
   SceCtrl_stub
   SceCommonDialog_stub
   SceDisplay_stub
+  SceKernelDmacMgr_stub
   SceFios2_stub
   SceGxm_stub
   SceLibcBridge_stub

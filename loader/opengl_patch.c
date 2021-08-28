@@ -47,14 +47,14 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
     }
     if (flags & FLAG_ALPHA_TEST)
       CShaderProgram__AddFragmentShaderString(this, "if ( gl_FragColor.a < 0.03125 ){ discard; }");
-    // if (flags & FLAG_DEBUG1) {
-      // CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.r = 1.0;");
-      // CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
-    // }
-    // if (flags & FLAG_DEBUG2) {
-      // CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.b = 1.0;");
-      // CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
-    // }
+    if (flags & FLAG_DEBUG1) {
+      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.r = 1.0;");
+      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
+    }
+    if (flags & FLAG_DEBUG2) {
+      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.b = 1.0;");
+      CShaderProgram__AddFragmentShaderString(this, "gl_FragColor.a = 1.0;");
+    }
     CShaderProgram__AddFragmentShaderString(this, "return gl_FragColor;");
     CShaderProgram__AddFragmentShaderString(this, "}");
     shader = glCreateShader(shaderType);
@@ -69,7 +69,7 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
     if (flags & FLAG_TEXTURE)
       CShaderProgram__AddVertexShaderString(this, "float2 vUV,");
     CShaderProgram__AddVertexShaderString(this, "float4 vColor,");
-    CShaderProgram__AddVertexShaderString(this, "uniform float is_fixed,");
+    CShaderProgram__AddVertexShaderString(this, "uniform bool is_fixed,");
     CShaderProgram__AddVertexShaderString(this, "uniform float4x4 matModelView,");
     CShaderProgram__AddVertexShaderString(this, "uniform float4x4 matProj,");
     if (flags & FLAG_NORMALS) {
@@ -90,7 +90,7 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
     CShaderProgram__AddVertexShaderString(this, "fixed4 out Out_Color : COLOR0,");
     CShaderProgram__AddVertexShaderString(this, "float4 out gl_Position : POSITION");
     CShaderProgram__AddVertexShaderString(this, "){");
-    CShaderProgram__AddVertexShaderString(this, "if (is_fixed > 0.0) vPos = floatToIntBits(vPos) / 65536.0;");
+    CShaderProgram__AddVertexShaderString(this, "if (is_fixed) vPos = floatToIntBits(vPos) / 65536.0;");
     if (flags & FLAG_3D) {
       CShaderProgram__AddVertexShaderString(this, "float4 vecPos = float4 ( vPos, 1.0 );");
       CShaderProgram__AddVertexShaderString(this, "gl_Position = mul ( mul ( vecPos, matModelView ), matProj );");
@@ -142,7 +142,7 @@ int CShaderProgram__CompileShaderWithFlags(void *this, unsigned int flags, int s
 }
 
 void patch_opengl(void) {
-  CShaderProgram__AddFragmentShaderString = (void *)so_find_addr("_ZN14CShaderProgram23AddFragmentShaderStringEPKc");
-  CShaderProgram__AddVertexShaderString = (void *)so_find_addr("_ZN14CShaderProgram21AddVertexShaderStringEPKc");
-  hook_thumb(so_find_addr("_ZN14CShaderProgram22CompileShaderWithFlagsEji"), (uintptr_t)CShaderProgram__CompileShaderWithFlags);
+  CShaderProgram__AddFragmentShaderString = (void *)so_symbol(&gtactw_mod, "_ZN14CShaderProgram23AddFragmentShaderStringEPKc");
+  CShaderProgram__AddVertexShaderString = (void *)so_symbol(&gtactw_mod, "_ZN14CShaderProgram21AddVertexShaderStringEPKc");
+  hook_addr(so_symbol(&gtactw_mod, "_ZN14CShaderProgram22CompileShaderWithFlagsEji"), (uintptr_t)CShaderProgram__CompileShaderWithFlags);
 }

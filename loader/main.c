@@ -55,7 +55,9 @@ int _newlib_heap_size_user = MEMORY_NEWLIB_MB * 1024 * 1024;
 unsigned int _oal_thread_priority = 64;
 unsigned int _oal_thread_affinity = 0x40000;
 
-SceTouchPanelInfo panelInfoFront, panelInfoBack;
+SceTouchPanelInfo panelInfoFront;
+
+so_module gtactw_mod;
 
 void *__wrap_memcpy(void *dest, const void *src, size_t n) {
   return sceClibMemcpy(dest, src, n);
@@ -109,12 +111,6 @@ int ret1(void) {
   return 1;
 }
 
-int mkdir(const char *pathname, mode_t mode) {
-  if (sceIoMkdir(pathname, mode) < 0)
-    return -1;
-  return 0;
-}
-
 int OS_ScreenGetHeight(void) {
   return SCREEN_H;
 }
@@ -166,7 +162,7 @@ int pthread_create_fake(int r0, int r1, int r2, void *arg) {
 
 int pthread_mutex_init_fake(SceKernelLwMutexWork **work) {
   *work = (SceKernelLwMutexWork *)memalign(8, sizeof(SceKernelLwMutexWork));
-  if (sceKernelCreateLwMutex(*work, "mutex", SCE_KERNEL_MUTEX_ATTR_RECURSIVE, 0, NULL) < 0)
+  if (sceKernelCreateLwMutex(*work, "mutex", 0x2000 | SCE_KERNEL_MUTEX_ATTR_RECURSIVE, 0, NULL) < 0)
     return -1;
   return 0;
 }
@@ -286,35 +282,35 @@ extern void *__cxa_guard_acquire;
 extern void *__cxa_guard_release;
 
 void patch_game(void) {
-  hook_thumb(so_find_addr("__cxa_guard_acquire"), (uintptr_t)&__cxa_guard_acquire);
-  hook_thumb(so_find_addr("__cxa_guard_release"), (uintptr_t)&__cxa_guard_release);
+  hook_addr(so_symbol(&gtactw_mod, "__cxa_guard_acquire"), (uintptr_t)&__cxa_guard_acquire);
+  hook_addr(so_symbol(&gtactw_mod, "__cxa_guard_release"), (uintptr_t)&__cxa_guard_release);
 
-  hook_thumb(so_find_addr("_Z24NVThreadGetCurrentJNIEnvv"), (uintptr_t)NVThreadGetCurrentJNIEnv);
+  hook_addr(so_symbol(&gtactw_mod, "_Z24NVThreadGetCurrentJNIEnvv"), (uintptr_t)NVThreadGetCurrentJNIEnv);
 
   // do not use pthread
-  hook_thumb(so_find_addr("_Z15OS_ThreadLaunchPFjPvES_jPKci16OSThreadPriority"), (uintptr_t)OS_ThreadLaunch);
-  hook_thumb(so_find_addr("_Z13OS_ThreadWaitPv"), (uintptr_t)OS_ThreadWait);
+  hook_addr(so_symbol(&gtactw_mod, "_Z15OS_ThreadLaunchPFjPvES_jPKci16OSThreadPriority"), (uintptr_t)OS_ThreadLaunch);
+  hook_addr(so_symbol(&gtactw_mod, "_Z13OS_ThreadWaitPv"), (uintptr_t)OS_ThreadWait);
 
-  hook_thumb(so_find_addr("_Z17OS_ScreenGetWidthv"), (uintptr_t)OS_ScreenGetWidth);
-  hook_thumb(so_find_addr("_Z18OS_ScreenGetHeightv"), (uintptr_t)OS_ScreenGetHeight);
+  hook_addr(so_symbol(&gtactw_mod, "_Z17OS_ScreenGetWidthv"), (uintptr_t)OS_ScreenGetWidth);
+  hook_addr(so_symbol(&gtactw_mod, "_Z18OS_ScreenGetHeightv"), (uintptr_t)OS_ScreenGetHeight);
 
   // TODO: set deviceChip, definedDevice
-  hook_thumb(so_find_addr("_Z20AND_SystemInitializev"), (uintptr_t)ret0);
+  hook_addr(so_symbol(&gtactw_mod, "_Z20AND_SystemInitializev"), (uintptr_t)ret0);
 
-  AND_TouchEvent = (void *)so_find_addr("_Z14AND_TouchEventiiii");
-  hook_thumb(so_find_addr("_Z13ProcessEventsb"), (uintptr_t)ProcessEvents);
+  AND_TouchEvent = (void *)so_symbol(&gtactw_mod, "_Z14AND_TouchEventiiii");
+  hook_addr(so_symbol(&gtactw_mod, "_Z13ProcessEventsb"), (uintptr_t)ProcessEvents);
 }
 
 static GLint is_fixed_unifs[32];
-static GLfloat is_fixed;
+static GLboolean is_fixed;
 
 void glVertexAttribPointerHook(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer) {
   if (index == 0) {
     if (type == GL_FIXED) {
-      is_fixed = 1.0f;
+      is_fixed = GL_TRUE;
       type = GL_FLOAT;
     } else {
-      is_fixed = 0.0f;
+      is_fixed = GL_FALSE;
     }
   }
   glVertexAttribPointer(index, size, type, normalized, stride, pointer);
@@ -322,7 +318,7 @@ void glVertexAttribPointerHook(GLuint index, GLint size, GLenum type, GLboolean 
 
 GLuint cur_prog;
 void glDrawArraysHook(GLenum mode, GLint first, GLsizei count) {
-  glUniform1f(is_fixed_unifs[cur_prog], is_fixed);
+  glUniform1i(is_fixed_unifs[cur_prog], is_fixed);
   glDrawArrays(mode, first, count);
 }
 
@@ -409,7 +405,7 @@ static const short *_tolower_tab_ = _C_tolower_;
 
 static char *__ctype_ = (char *)&_ctype_;
 
-static DynLibFunction dynlib_functions[] = {
+static so_default_dynlib default_dynlib[] = {
   { "__aeabi_memclr", (uintptr_t)&sceClibMemclr },
   { "__aeabi_memclr4", (uintptr_t)&sceClibMemclr },
   { "__aeabi_memclr8", (uintptr_t)&sceClibMemclr },
@@ -666,7 +662,6 @@ int main(int argc, char *argv[]) {
   sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
   sceTouchSetSamplingState(SCE_TOUCH_PORT_BACK, SCE_TOUCH_SAMPLING_STATE_START);
   sceTouchGetPanelInfo(SCE_TOUCH_PORT_FRONT, &panelInfoFront);
-  sceTouchGetPanelInfo(SCE_TOUCH_PORT_BACK, &panelInfoBack);
 
   scePowerSetArmClockFrequency(444);
   scePowerSetBusClockFrequency(222);
@@ -679,28 +674,26 @@ int main(int argc, char *argv[]) {
   if (!file_exists("ur0:/data/libshacccg.suprx"))
     fatal_error("Error libshacccg.suprx is not installed.");
 
-  if (so_load(SO_PATH) < 0)
+  if (so_load(&gtactw_mod, SO_PATH, LOAD_ADDRESS) < 0)
     fatal_error("Error could not load %s.", SO_PATH);
 
   stderr_fake = stderr;
-  so_relocate();
-  so_resolve(dynlib_functions, sizeof(dynlib_functions) / sizeof(DynLibFunction), 1);
+  so_relocate(&gtactw_mod);
+  so_resolve(&gtactw_mod, default_dynlib, sizeof(default_dynlib), 0);
 
   patch_mpg123();
   patch_openal();
   patch_opengl();
   patch_game();
-  so_flush_caches();
+  so_flush_caches(&gtactw_mod);
 
-  so_execute_init_array();
-  so_free_temp();
+  so_initialize(&gtactw_mod);
 
   if (fios_init() < 0)
     fatal_error("Error could not initialize fios.");
 
   vglSetupRuntimeShaderCompiler(SHARK_OPT_UNSAFE, SHARK_ENABLE, SHARK_ENABLE, SHARK_ENABLE);
   vglSetupGarbageCollector(127, 0x10000);
-  vglUseVram(GL_TRUE);
   vglInitExtended(0, SCREEN_W, SCREEN_H, MEMORY_VITAGL_THRESHOLD_MB * 1024 * 1024, SCE_GXM_MULTISAMPLE_4X);
 
   jni_load();
