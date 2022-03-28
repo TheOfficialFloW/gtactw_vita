@@ -137,9 +137,9 @@ int ProcessEvents(void) {
       int x = (int)((float)touch.report[i].x * (float)SCREEN_W / 1920.0f);
       int y = (int)((float)touch.report[i].y * (float)SCREEN_H / 1088.0f);
 
-      if (lastX[i] != -1 || lastY[i] != -1)
+      if (lastX[i] == -1 || lastY[i] == -1)
         AND_TouchEvent(ACTION_DOWN, i, x, y);
-      else
+      else if (lastX[i] != x || lastY[i] != y)
         AND_TouchEvent(ACTION_MOVE, i, x, y);
       lastX[i] = x;
       lastY[i] = y;
